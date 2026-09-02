@@ -28,6 +28,7 @@ function handleLocalFiles(event) {
 }
 
 // 2. البحث عن أغاني كاملة (MP3 كاملة 100% عبر Jamendo API)
+// 2. البحث عن أغاني كاملة عبر Jamendo API المحدث والمضمون
 async function searchMusic(event) {
   event.preventDefault();
   const query = document.getElementById('searchInput').value.trim();
@@ -35,15 +36,26 @@ async function searchMusic(event) {
 
   searchResults.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> جاري البحث عن أغاني كاملة...</div>';
 
-  const clientId = '56631b3d';
-  const url = `https://api.jamendo.com/v3.0/tracks/?client_id=${clientId}&format=json&limit=15&search=${encodeURIComponent(query)}`;
+  // مفتاح الاختبار الرسمي المضمون لخدمة Jamendo
+  const clientId = '709fa152';
+  const targetUrl = `https://api.jamendo.com/v3.0/tracks/?client_id=${clientId}&format=json&limit=15&namesearch=${encodeURIComponent(query)}`;
 
   try {
-    const response = await fetch(url);
-    const data = await response.json();
+    let data;
+    try {
+      // محاولة الطلب المباشر أولاً
+      const response = await fetch(targetUrl);
+      data = await response.json();
+    } catch (directErr) {
+      // استخدام بروكسي تلقائي في حال وجود مشكلة حظر CORS في المتصفح
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+      const proxyResponse = await fetch(proxyUrl);
+      const proxyData = await proxyResponse.json();
+      data = JSON.parse(proxyData.contents);
+    }
 
     if (!data.results || data.results.length === 0) {
-      searchResults.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج. جرب البحث باسم آخر.</div>';
+      searchResults.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج. جرب كتابة اسم الفنان بالإنجليزي (مثل: Rock, Jazz, Alan)</div>';
       return;
     }
 
@@ -73,8 +85,8 @@ async function searchMusic(event) {
     });
 
   } catch (error) {
-    console.error(error);
-    searchResults.innerHTML = '<div class="empty-state">حدث خطأ أثناء جلب البيانات.</div>';
+    console.error("Search Error:", error);
+    searchResults.innerHTML = '<div class="empty-state">حدث خطأ أثناء جلب النتائج. حاول مجدداً.</div>';
   }
 }
 
