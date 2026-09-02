@@ -146,7 +146,23 @@ function removeFromPlaylist(index) {
   updatePlaylistUI();
 }
 
-// 7. ضغط وتنزيل ملف ZIP بدون تجميد المتصفح
+// 7. دالة تجلب الملف كـ ArrayBuffer مع مهلة زمنية صارمة 3 ثوانٍ
+async function fetchWithTimeout(url, timeoutMs = 3000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+    if (!response.ok) throw new Error('Network response failure');
+    return await response.arrayBuffer();
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
+// 8. ضغط الملفات بدون تجميد (معالجة سريعة ومتوازية)
 async function downloadZip() {
   if (playlist.length === 0) {
     alert("قم بإضافة بعض الأغاني إلى القائمة أولاً!");
@@ -159,42 +175,41 @@ async function downloadZip() {
   const progressBar = document.getElementById('progressBar');
 
   progressContainer.style.display = 'block';
-  progressBar.style.width = '0%';
+  progressBar.style.width = '10%';
 
-  let completed = 0;
+  let count = 0;
 
-  for (let i = 0; i < playlist.length; i++) {
-    const song = playlist[i];
-
+  // معالجة جميع عناصر القائمة بالتوازي لسرعة فائقة
+  const promises = playlist.map(async (song) => {
     if (song.type === 'local') {
       folder.file(song.filename, song.data);
     } else {
+      // تجربة جلب الملف عبر أكثر من مصدر لضمان عدم التعليق
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // مهلة 8 ثوانٍ لتجنب التعليق
-
-        // استخدام بروكسي متوافق لتفادي حظر CORS
-        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(song.audioUrl);
-        const response = await fetch(proxyUrl, { signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-          const blob = await response.blob();
-          folder.file(song.filename, blob);
-        } else {
-          console.warn(`تعذر تحميل: ${song.filename}`);
+        const data = await fetchWithTimeout(song.audioUrl, 4000);
+        folder.file(song.filename, data);
+      } catch (e1) {
+        try {
+          // محاولة باستخدام بروكسي طوارئ إذا فشل المباشر
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(song.audioUrl)}`;
+          const data = await fetchWithTimeout(proxyUrl, 4000);
+          folder.file(song.filename, data);
+        } catch (e2) {
+          console.warn(`تم تخطي الملف لتعذر التحميل: ${song.filename}`);
         }
-      } catch (err) {
-        console.error(`تخطّي الملف بسبب خطأ شبكة أو CORS: ${song.filename}`, err);
       }
     }
+    count++;
+    progressBar.style.width = `${Math.floor((count / playlist.length) * 60)}%`;
+  });
 
-    completed++;
-    progressBar.style.width = `${(completed / playlist.length) * 50}%`;
-  }
+  await Promise.all(promises);
 
-  zip.generateAsync({ type: "blob" }, (metadata) => {
-    progressBar.style.width = `${50 + (metadata.percent / 2)}%`;
+  progressBar.style.width = '80%';
+
+  // إعداد ملف الـ ZIP وتنزيله
+  zip.generateAsync({ type: "blob", compression: "STORE" }, (metadata) => {
+    progressBar.style.width = `${80 + Math.floor(metadata.percent * 0.2)}%`;
   }).then((content) => {
     saveAs(content, "music_playlist.zip");
     setTimeout(() => {
@@ -202,7 +217,7 @@ async function downloadZip() {
       progressBar.style.width = '0%';
     }, 1000);
   }).catch((err) => {
-    alert("حدث خطأ أثناء إنشاء ملف ZIP");
+    alert("حدث خطأ أثناء تجميع ملف ZIP.");
     console.error(err);
     progressContainer.style.display = 'none';
   });
