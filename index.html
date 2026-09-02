@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Music Vault & Downloader - منصة الموسيقى المتكاملة</title>
+  <title>Music Vault & Downloader</title>
   
   <!-- الخطوط والأيقونات -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,331 +11,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
+  <!-- ربط ملف التنسيقات الخارجية CSS -->
+  <link rel="stylesheet" href="style.css">
+
   <!-- مكتبات الضغط والتنزيل JSZip & FileSaver -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-
-  <style>
-    :root {
-      --bg-primary: #0b0f19;
-      --bg-card: #151f32;
-      --bg-card-hover: #1e2d4a;
-      --accent-color: #6366f1;
-      --accent-hover: #4f46e5;
-      --accent-cyan: #06b6d4;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --border-color: #24334d;
-      --danger: #ef4444;
-      --success: #10b981;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Cairo', sans-serif;
-    }
-
-    body {
-      background-color: var(--bg-primary);
-      color: var(--text-main);
-      min-height: 100vh;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 1100px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    header {
-      text-align: center;
-      padding: 15px 0;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    header h1 {
-      font-size: 2.2rem;
-      font-weight: 900;
-      background: linear-gradient(135deg, #818cf8, #06b6d4);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    header p {
-      color: var(--text-muted);
-      font-size: 0.95rem;
-      margin-top: 5px;
-    }
-
-    .card {
-      background: var(--bg-card);
-      border-radius: 16px;
-      padding: 20px;
-      border: 1px solid var(--border-color);
-      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
-    }
-
-    .card-title {
-      font-size: 1.1rem;
-      font-weight: 700;
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: var(--text-main);
-    }
-
-    .card-title i {
-      color: var(--accent-cyan);
-    }
-
-    /* Player Card */
-    .player-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      gap: 12px;
-      background: linear-gradient(180deg, #151f32 0%, #0b0f19 100%);
-      border: 1px solid var(--accent-color);
-    }
-
-    .now-playing-info {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-
-    .now-playing-info img {
-      width: 50px;
-      height: 50px;
-      border-radius: 8px;
-      object-fit: cover;
-      display: none;
-    }
-
-    .now-playing-title {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--accent-cyan);
-    }
-
-    audio {
-      width: 100%;
-      max-width: 600px;
-      border-radius: 30px;
-      outline: none;
-    }
-
-    /* Grid Layout */
-    .grid-container {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 20px;
-    }
-
-    @media (min-width: 900px) {
-      .grid-container {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
-    /* Drop zone for local files */
-    .drop-zone {
-      border: 2px dashed var(--accent-color);
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-      background: rgba(99, 102, 241, 0.05);
-      cursor: pointer;
-      transition: background 0.2s;
-      margin-bottom: 20px;
-    }
-
-    .drop-zone:hover {
-      background: rgba(99, 102, 241, 0.12);
-    }
-
-    .drop-zone i {
-      font-size: 1.8rem;
-      color: var(--accent-cyan);
-      margin-bottom: 6px;
-    }
-
-    .drop-zone p {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-    }
-
-    /* Search Section */
-    .search-box {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-
-    input[type="text"] {
-      flex: 1;
-      padding: 12px 16px;
-      border-radius: 10px;
-      border: 1px solid var(--border-color);
-      background-color: #0b0f19;
-      color: var(--text-main);
-      font-size: 0.95rem;
-      outline: none;
-    }
-
-    input[type="text"]:focus {
-      border-color: var(--accent-color);
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 10px 18px;
-      border-radius: 10px;
-      border: none;
-      font-weight: 700;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
-      color: white;
-    }
-
-    .btn-primary:hover {
-      opacity: 0.9;
-    }
-
-    .btn-success {
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: white;
-    }
-
-    .btn-success:hover {
-      opacity: 0.9;
-    }
-
-    /* Lists */
-    .song-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      max-height: 380px;
-      overflow-y: auto;
-      padding-left: 4px;
-    }
-
-    .song-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      background: var(--bg-card-hover);
-      border-radius: 10px;
-      transition: background 0.2s;
-    }
-
-    .song-item:hover {
-      background: #283a5e;
-    }
-
-    .song-meta {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      overflow: hidden;
-    }
-
-    .song-meta img {
-      width: 40px;
-      height: 40px;
-      border-radius: 6px;
-      object-fit: cover;
-    }
-
-    .song-details {
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .song-title-text {
-      font-size: 0.9rem;
-      font-weight: 700;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 200px;
-    }
-
-    .song-artist-text {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-    }
-
-    .song-actions {
-      display: flex;
-      gap: 6px;
-    }
-
-    .action-btn {
-      background: rgba(255,255,255,0.08);
-      border: none;
-      color: var(--text-main);
-      cursor: pointer;
-      padding: 8px;
-      border-radius: 8px;
-      transition: background 0.2s, color 0.2s;
-    }
-
-    .action-btn:hover {
-      background: var(--accent-color);
-    }
-
-    .action-btn.delete:hover {
-      background: var(--danger);
-    }
-
-    /* Progress bar */
-    .progress-bar-container {
-      width: 100%;
-      background: var(--bg-primary);
-      border-radius: 10px;
-      height: 8px;
-      overflow: hidden;
-      margin-top: 10px;
-      display: none;
-    }
-
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, var(--accent-color), var(--accent-cyan));
-      transition: width 0.3s;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 30px;
-      color: var(--text-muted);
-      font-size: 0.85rem;
-    }
-  </style>
 </head>
 <body>
 
@@ -345,7 +26,7 @@
       <p>ابحث عن الأغاني عبر الإنترنت أو ارفع ملفاتك الخاصة، واجمعها في ملف ZIP واحد بضغطة زر</p>
     </header>
 
-    <!-- Player Box -->
+    <!-- مشغل الصوتيات -->
     <div class="card player-card">
       <div class="now-playing-info">
         <img id="nowPlayingCover" src="" alt="Cover">
@@ -356,10 +37,10 @@
 
     <div class="grid-container">
       
-      <!-- Section 1: Inputs (Search & Local Upload) -->
+      <!-- القسم الأول: البحث والرفع المحلي -->
       <div class="card">
         
-        <!-- 1.1 Local File Upload -->
+        <!-- رفع من الجهاز -->
         <div class="card-title">
           <i class="fa-solid fa-file-audio"></i>
           <span>رفع من جهازك</span>
@@ -370,7 +51,7 @@
           <input type="file" id="fileInput" accept="audio/*" multiple style="display: none;" onchange="handleLocalFiles(event)">
         </div>
 
-        <!-- 1.2 Online Search -->
+        <!-- البحث عبر الإنترنت -->
         <div class="card-title">
           <i class="fa-solid fa-magnifying-glass"></i>
           <span>البحث عن مغني أو أغنية</span>
@@ -388,7 +69,7 @@
         </ul>
       </div>
 
-      <!-- Section 2: Playlist & ZIP Download -->
+      <!-- القسم الثاني: قائمة التجميع والتحميل -->
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
           <div class="card-title" style="margin-bottom:0;">
@@ -412,200 +93,7 @@
     </div>
   </div>
 
-  <script>
-    const playlist = [];
-    const audioPlayer = document.getElementById('audioPlayer');
-    const nowPlayingTitle = document.getElementById('nowPlayingTitle');
-    const nowPlayingCover = document.getElementById('nowPlayingCover');
-    const searchResults = document.getElementById('searchResults');
-    const playlistUI = document.getElementById('playlist');
-    const playlistEmptyState = document.getElementById('playlistEmptyState');
-    const playlistCount = document.getElementById('playlistCount');
-
-    // 1. Handle Local File Uploads
-    function handleLocalFiles(event) {
-      const files = event.target.files;
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const songObj = {
-          id: Date.now() + Math.random(),
-          title: file.name.replace(/\.[^/.]+$/, ""),
-          artist: "ملف محلي",
-          filename: file.name,
-          type: 'local',
-          data: file,
-          audioUrl: URL.createObjectURL(file),
-          coverUrl: 'https://cdn-icons-png.flaticon.com/512/461/461238.png'
-        };
-        playlist.push(songObj);
-      }
-      updatePlaylistUI();
-    }
-
-    // 2. Search Music via iTunes Public API
-    async function searchMusic(event) {
-      event.preventDefault();
-      const query = document.getElementById('searchInput').value.trim();
-      if (!query) return;
-
-      searchResults.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...</div>';
-
-      try {
-        const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&entity=song&limit=10`);
-        const data = await response.json();
-
-        if (data.results.length === 0) {
-          searchResults.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج.</div>';
-          return;
-        }
-
-        searchResults.innerHTML = '';
-        data.results.forEach(track => {
-          const li = document.createElement('li');
-          li.className = 'song-item';
-          const coverUrl = track.artworkUrl100.replace('100x100bb', '300x300bb');
-
-          li.innerHTML = `
-            <div class="song-meta">
-              <img src="${coverUrl}" alt="Cover">
-              <div class="song-details">
-                <span class="song-title-text">${track.trackName}</span>
-                <span class="song-artist-text">${track.artistName}</span>
-              </div>
-            </div>
-            <div class="song-actions">
-              <button class="action-btn" onclick="playPreview('${track.previewUrl}', '${escapeQuotes(track.trackName)} - ${escapeQuotes(track.artistName)}', '${coverUrl}')" title="استماع">
-                <i class="fa-solid fa-play"></i>
-              </button>
-              <button class="action-btn" style="color: var(--success);" onclick="addOnlineToPlaylist('${escapeQuotes(track.trackName)}', '${escapeQuotes(track.artistName)}', '${track.previewUrl}', '${coverUrl}')" title="إضافة">
-                <i class="fa-solid fa-plus"></i>
-              </button>
-            </div>
-          `;
-          searchResults.appendChild(li);
-        });
-
-      } catch (error) {
-        console.error(error);
-        searchResults.innerHTML = '<div class="empty-state">حدث خطأ أثناء الاتصال بالخادم.</div>';
-      }
-    }
-
-    function escapeQuotes(str) {
-      return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    }
-
-    // 3. Play Preview Audio
-    function playPreview(url, title, cover) {
-      audioPlayer.src = url;
-      nowPlayingTitle.textContent = title;
-      nowPlayingCover.src = cover;
-      nowPlayingCover.style.display = 'block';
-      audioPlayer.play();
-    }
-
-    // 4. Add Online Track to Playlist
-    function addOnlineToPlaylist(title, artist, audioUrl, coverUrl) {
-      const songObj = {
-        id: Date.now() + Math.random(),
-        title: title,
-        artist: artist,
-        filename: `${artist} - ${title}.mp3`,
-        type: 'online',
-        audioUrl: audioUrl,
-        coverUrl: coverUrl
-      };
-
-      playlist.push(songObj);
-      updatePlaylistUI();
-    }
-
-    // 5. Update Playlist UI
-    function updatePlaylistUI() {
-      playlistUI.innerHTML = '';
-      playlistCount.textContent = playlist.length;
-
-      if (playlist.length === 0) {
-        playlistUI.appendChild(playlistEmptyState);
-        playlistEmptyState.style.display = 'block';
-        return;
-      }
-
-      playlist.forEach((song, index) => {
-        const li = document.createElement('li');
-        li.className = 'song-item';
-        li.innerHTML = `
-          <div class="song-meta">
-            <img src="${song.coverUrl}" alt="Cover">
-            <div class="song-details">
-              <span class="song-title-text">${song.title}</span>
-              <span class="song-artist-text">${song.artist}</span>
-            </div>
-          </div>
-          <div class="song-actions">
-            <button class="action-btn" onclick="playPreview('${song.audioUrl}', '${escapeQuotes(song.title)} - ${escapeQuotes(song.artist)}', '${song.coverUrl}')" title="استماع">
-              <i class="fa-solid fa-play"></i>
-            </button>
-            <button class="action-btn delete" onclick="removeFromPlaylist(${index})" title="إزالة">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </div>
-        `;
-        playlistUI.appendChild(li);
-      });
-    }
-
-    // 6. Remove Track
-    function removeFromPlaylist(index) {
-      playlist.splice(index, 1);
-      updatePlaylistUI();
-    }
-
-    // 7. Download ZIP (Local + Online Files)
-    async function downloadZip() {
-      if (playlist.length === 0) {
-        alert("قم بإضافة بعض الأغاني إلى القائمة أولاً!");
-        return;
-      }
-
-      const zip = new JSZip();
-      const folder = zip.folder("My_Music_Playlist");
-      const progressContainer = document.getElementById('progressContainer');
-      const progressBar = document.getElementById('progressBar');
-
-      progressContainer.style.display = 'block';
-      progressBar.style.width = '0%';
-
-      let completed = 0;
-
-      for (let i = 0; i < playlist.length; i++) {
-        const song = playlist[i];
-        if (song.type === 'local') {
-          folder.file(song.filename, song.data);
-        } else {
-          try {
-            const response = await fetch(song.audioUrl);
-            const blob = await response.blob();
-            folder.file(song.filename, blob);
-          } catch (err) {
-            console.error(`خطأ في جلب: ${song.filename}`, err);
-          }
-        }
-
-        completed++;
-        progressBar.style.width = `${(completed / playlist.length) * 50}%`;
-      }
-
-      zip.generateAsync({ type: "blob" }, (metadata) => {
-        progressBar.style.width = `${50 + (metadata.percent / 2)}%`;
-      }).then((content) => {
-        saveAs(content, "music_playlist.zip");
-        setTimeout(() => {
-          progressContainer.style.display = 'none';
-          progressBar.style.width = '0%';
-        }, 1000);
-      });
-    }
-  </script>
+  <!-- ربط ملف الجافاسكريبت الخارجي JS -->
+  <script src="script.js"></script>
 </body>
 </html>
