@@ -7,7 +7,7 @@ const playlistUI = document.getElementById('playlist');
 const playlistEmptyState = document.getElementById('playlistEmptyState');
 const playlistCount = document.getElementById('playlistCount');
 
-// 1. رفع ملفات محلياً من الهاتف
+// 1. رفع الملفات المحلية من الهاتف
 function handleLocalFiles(event) {
   const files = event.target.files;
   for (let i = 0; i < files.length; i++) {
@@ -27,7 +27,7 @@ function handleLocalFiles(event) {
   updatePlaylistUI();
 }
 
-// 2. دالة البحث المباشرة والمتوافقة مع الهاتف
+// 2. البحث المباشر السريع والخفيف بدون بروكسي
 async function searchMusic(event) {
   event.preventDefault();
   const query = document.getElementById('searchInput').value.trim();
@@ -35,55 +35,69 @@ async function searchMusic(event) {
 
   searchResults.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...</div>';
 
-  // رابط مصدر الأغاني الكاملة المباشرة
-  const targetApi = `https://api.jamendo.com/v3.0/tracks/?client_id=56631b3d&format=json&limit=15&fuzzytags=${encodeURIComponent(query)}&namesearch=${encodeURIComponent(query)}`;
-  
-  // استخدام وسيط متوافق مع متصفحات الهاتف لتفادي الحظر
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetApi)}`;
+  // قائمة بخوادم عامة وريعية سريعة تعمل مباشرة على شبكات الهاتف
+  const instances = [
+    'https://invidious.nerdvpn.de',
+    'https://invidious.flokinet.to',
+    'https://inv.riverside.rocks'
+  ];
 
-  try {
-    const response = await fetch(proxyUrl);
-    const result = await response.json();
-    const data = JSON.parse(result.contents);
+  let success = false;
 
-    if (!data.results || data.results.length === 0) {
-      searchResults.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج. جرب البحث بلغة أو كلمة أخرى (مثال: Pop, Relax, Acoustic, Piano).</div>';
-      return;
-    }
+  for (let baseUrl of instances) {
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/search?q=${encodeURIComponent(query)}&type=video`, {
+        signal: AbortSignal.timeout(4000) // قطع الاتصال بعد 4 ثواني إذا كان الخادم بطيئاً
+      });
 
-    searchResults.innerHTML = '';
-    data.results.forEach(track => {
-      const li = document.createElement('li');
-      li.className = 'song-item';
+      if (!response.ok) continue;
 
-      const trackTitle = track.name || 'بدون عنوان';
-      const artistName = track.artist_name || 'فنان مستقل';
-      const cover = track.image || 'https://cdn-icons-png.flaticon.com/512/461/461238.png';
-      const audio = track.audio;
+      const data = await response.json();
 
-      li.innerHTML = `
-        <div class="song-meta">
-          <img src="${cover}" alt="Cover">
-          <div class="song-details">
-            <span class="song-title-text">${trackTitle}</span>
-            <span class="song-artist-text">${artistName}</span>
+      if (!data || data.length === 0) {
+        searchResults.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج.</div>';
+        return;
+      }
+
+      searchResults.innerHTML = '';
+      data.slice(0, 10).forEach(video => {
+        const title = video.title || 'بدون عنوان';
+        const artist = video.author || 'فنان';
+        const cover = video.videoThumbnails ? video.videoThumbnails[0].url : 'https://cdn-icons-png.flaticon.com/512/461/461238.png';
+        const videoId = video.videoId;
+
+        const li = document.createElement('li');
+        li.className = 'song-item';
+
+        li.innerHTML = `
+          <div class="song-meta">
+            <img src="${cover}" alt="Cover">
+            <div class="song-details">
+              <span class="song-title-text">${title}</span>
+              <span class="song-artist-text">${artist}</span>
+            </div>
           </div>
-        </div>
-        <div class="song-actions">
-          <button class="action-btn" onclick="playPreview('${audio}', '${escapeQuotes(trackTitle)} - ${escapeQuotes(artistName)}', '${cover}')" title="استماع">
-            <i class="fa-solid fa-play"></i>
-          </button>
-          <button class="action-btn" style="color: var(--success);" onclick="addOnlineToPlaylist('${escapeQuotes(trackTitle)}', '${escapeQuotes(artistName)}', '${audio}', '${cover}')" title="إضافة">
-            <i class="fa-solid fa-plus"></i>
-          </button>
-        </div>
-      `;
-      searchResults.appendChild(li);
-    });
+          <div class="song-actions">
+            <button class="action-btn" onclick="fetchAndPlay('${videoId}', '${baseUrl}', '${escapeQuotes(title)}', '${cover}')" title="استماع">
+              <i class="fa-solid fa-play"></i>
+            </button>
+            <button class="action-btn" style="color: var(--success);" onclick="addOnlineToPlaylist('${videoId}', '${baseUrl}', '${escapeQuotes(title)}', '${escapeQuotes(artist)}', '${cover}')" title="إضافة">
+              <i class="fa-solid fa-plus"></i>
+            </button>
+          </div>
+        `;
+        searchResults.appendChild(li);
+      });
 
-  } catch (error) {
-    console.error(error);
-    searchResults.innerHTML = '<div class="empty-state">تعذر الاتصال بالشبكة. تأكد من الاتصال بالإنترنت وأعد المحاولة.</div>';
+      success = true;
+      break; // الخروج عند نجاح أول خادم
+    } catch (e) {
+      console.warn(`فشل الاتصال بالخادم: ${baseUrl}`);
+    }
+  }
+
+  if (!success) {
+    searchResults.innerHTML = '<div class="empty-state">تأكد من فتح الصفحة في المتصفح المباشر وليس داخل تطبيق محدد. أعد المحاولة.</div>';
   }
 }
 
@@ -91,32 +105,43 @@ function escapeQuotes(str) {
   return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
-// 3. تشغيل الصوت
-function playPreview(url, title, cover) {
-  audioPlayer.src = url;
-  nowPlayingTitle.textContent = title;
-  nowPlayingCover.src = cover;
-  nowPlayingCover.style.display = 'block';
-  audioPlayer.play();
+// 3. جلب وتجميع روابط الصوت للتشغيل
+async function fetchAndPlay(videoId, baseUrl, title, cover) {
+  try {
+    const res = await fetch(`${baseUrl}/api/v1/videos/${videoId}`);
+    const data = await res.json();
+    const audioFormats = data.adaptiveFormats.filter(f => f.type.includes('audio'));
+    
+    if (audioFormats.length > 0) {
+      audioPlayer.src = audioFormats[0].url;
+      nowPlayingTitle.textContent = title;
+      nowPlayingCover.src = cover;
+      nowPlayingCover.style.display = 'block';
+      audioPlayer.play();
+    }
+  } catch (e) {
+    alert("تعذر تشغيل هذا المقطع حالياً.");
+  }
 }
 
-// 4. إضافة أغنية لقائمة التحميل
-function addOnlineToPlaylist(title, artist, audioUrl, coverUrl) {
+// 4. إضافة أغنية لقائمة التجميع
+function addOnlineToPlaylist(videoId, baseUrl, title, artist, cover) {
   const songObj = {
     id: Date.now() + Math.random(),
     title: title,
     artist: artist,
     filename: `${artist} - ${title}.mp3`,
     type: 'online',
-    audioUrl: audioUrl,
-    coverUrl: coverUrl
+    videoId: videoId,
+    baseUrl: baseUrl,
+    coverUrl: cover
   };
 
   playlist.push(songObj);
   updatePlaylistUI();
 }
 
-// 5. تحديث الواجهة
+// 5. تحديث واجهة القائمة
 function updatePlaylistUI() {
   playlistUI.innerHTML = '';
   playlistCount.textContent = playlist.length;
@@ -139,9 +164,6 @@ function updatePlaylistUI() {
         </div>
       </div>
       <div class="song-actions">
-        <button class="action-btn" onclick="playPreview('${song.audioUrl}', '${escapeQuotes(song.title)} - ${escapeQuotes(song.artist)}', '${song.coverUrl}')" title="استماع">
-          <i class="fa-solid fa-play"></i>
-        </button>
         <button class="action-btn delete" onclick="removeFromPlaylist(${index})" title="إزالة">
           <i class="fa-solid fa-trash"></i>
         </button>
@@ -157,7 +179,7 @@ function removeFromPlaylist(index) {
   updatePlaylistUI();
 }
 
-// 7. التجميع والضغط في ZIP
+// 7. ضغط وتنزيل الأغاني داخل ZIP بالهاتف
 async function downloadZip() {
   if (playlist.length === 0) {
     alert("أضف بعض الأغاني أولاً!");
@@ -181,9 +203,13 @@ async function downloadZip() {
       folder.file(song.filename, song.data);
     } else {
       try {
-        const response = await fetch(song.audioUrl);
-        if (response.ok) {
-          const blob = await response.blob();
+        const res = await fetch(`${song.baseUrl}/api/v1/videos/${song.videoId}`);
+        const data = await res.json();
+        const audioFormats = data.adaptiveFormats.filter(f => f.type.includes('audio'));
+
+        if (audioFormats.length > 0) {
+          const audioRes = await fetch(audioFormats[0].url);
+          const blob = await audioRes.blob();
           folder.file(song.filename, blob);
         }
       } catch (err) {
@@ -200,7 +226,7 @@ async function downloadZip() {
     progressContainer.style.display = 'none';
     progressBar.style.width = '0%';
   }).catch((err) => {
-    alert("حدث خطأ أثناء التجميع");
+    alert("حدث خطأ أثناء الضغط");
     progressContainer.style.display = 'none';
   });
 }
