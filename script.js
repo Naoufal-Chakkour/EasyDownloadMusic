@@ -7,7 +7,7 @@ const playlistUI = document.getElementById('playlist');
 const playlistEmptyState = document.getElementById('playlistEmptyState');
 const playlistCount = document.getElementById('playlistCount');
 
-// 1. معالجة رفع الملفات المحلية
+// 1. رفع ملفات محلية من الهاتف
 function handleLocalFiles(event) {
   const files = event.target.files;
   for (let i = 0; i < files.length; i++) {
@@ -27,20 +27,23 @@ function handleLocalFiles(event) {
   updatePlaylistUI();
 }
 
-// 2. البحث عن الأغاني عبر الإنترنت
+// 2. البحث عن أغاني كاملة (MP3 كاملة 100% عبر Jamendo API)
 async function searchMusic(event) {
   event.preventDefault();
   const query = document.getElementById('searchInput').value.trim();
   if (!query) return;
 
-  searchResults.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...</div>';
+  searchResults.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> جاري البحث عن أغاني كاملة...</div>';
+
+  const clientId = '56631b3d';
+  const url = `https://api.jamendo.com/v3.0/tracks/?client_id=${clientId}&format=json&limit=15&search=${encodeURIComponent(query)}`;
 
   try {
-    const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&entity=song&limit=10`);
+    const response = await fetch(url);
     const data = await response.json();
 
-    if (data.results.length === 0) {
-      searchResults.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج.</div>';
+    if (!data.results || data.results.length === 0) {
+      searchResults.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج. جرب البحث باسم آخر.</div>';
       return;
     }
 
@@ -48,21 +51,20 @@ async function searchMusic(event) {
     data.results.forEach(track => {
       const li = document.createElement('li');
       li.className = 'song-item';
-      const coverUrl = track.artworkUrl100.replace('100x100bb', '300x300bb');
 
       li.innerHTML = `
         <div class="song-meta">
-          <img src="${coverUrl}" alt="Cover">
+          <img src="${track.image}" alt="Cover">
           <div class="song-details">
-            <span class="song-title-text">${track.trackName}</span>
-            <span class="song-artist-text">${track.artistName}</span>
+            <span class="song-title-text">${track.name}</span>
+            <span class="song-artist-text">${track.artist_name}</span>
           </div>
         </div>
         <div class="song-actions">
-          <button class="action-btn" onclick="playPreview('${track.previewUrl}', '${escapeQuotes(track.trackName)} - ${escapeQuotes(track.artistName)}', '${coverUrl}')" title="استماع">
+          <button class="action-btn" onclick="playPreview('${track.audio}', '${escapeQuotes(track.name)} - ${escapeQuotes(track.artist_name)}', '${track.image}')" title="استماع">
             <i class="fa-solid fa-play"></i>
           </button>
-          <button class="action-btn" style="color: var(--success);" onclick="addOnlineToPlaylist('${escapeQuotes(track.trackName)}', '${escapeQuotes(track.artistName)}', '${track.previewUrl}', '${coverUrl}')" title="إضافة">
+          <button class="action-btn" style="color: var(--success);" onclick="addOnlineToPlaylist('${escapeQuotes(track.name)}', '${escapeQuotes(track.artist_name)}', '${track.audio}', '${track.image}')" title="إضافة">
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
@@ -72,7 +74,7 @@ async function searchMusic(event) {
 
   } catch (error) {
     console.error(error);
-    searchResults.innerHTML = '<div class="empty-state">حدث خطأ أثناء الاتصال بالخادم.</div>';
+    searchResults.innerHTML = '<div class="empty-state">حدث خطأ أثناء جلب البيانات.</div>';
   }
 }
 
@@ -80,7 +82,7 @@ function escapeQuotes(str) {
   return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
-// 3. تشغيل العينة الصوتية
+// 3. تشغيل الصوت
 function playPreview(url, title, cover) {
   audioPlayer.src = url;
   nowPlayingTitle.textContent = title;
@@ -89,7 +91,7 @@ function playPreview(url, title, cover) {
   audioPlayer.play();
 }
 
-// 4. إضافة أغنية من النت لقائمة التحميل
+// 4. إضافة أغنية للقائمة
 function addOnlineToPlaylist(title, artist, audioUrl, coverUrl) {
   const songObj = {
     id: Date.now() + Math.random(),
@@ -105,7 +107,7 @@ function addOnlineToPlaylist(title, artist, audioUrl, coverUrl) {
   updatePlaylistUI();
 }
 
-// 5. تحديث واجهة قائمة التجميع
+// 5. تحديث قائمة التجميع
 function updatePlaylistUI() {
   playlistUI.innerHTML = '';
   playlistCount.textContent = playlist.length;
@@ -146,26 +148,10 @@ function removeFromPlaylist(index) {
   updatePlaylistUI();
 }
 
-// 7. دالة جلب الملف مع مهلة زمنية 3 ثوانٍ
-async function fetchWithTimeout(url, timeoutMs = 3000) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(id);
-    if (!response.ok) throw new Error('Network response failure');
-    return await response.arrayBuffer();
-  } catch (err) {
-    clearTimeout(id);
-    throw err;
-  }
-}
-
-// 8. ضغط الأعداد الكبيرة (100+ ملف) باستخدام المعالجة المتتابعة على دفعات (Batches)
+// 7. تنزيل كل الأغاني كاملة مضغوطة في ملف ZIP على الهاتف
 async function downloadZip() {
   if (playlist.length === 0) {
-    alert("قم بإضافة بعض الأغاني إلى القائمة أولاً!");
+    alert("أضف بعض الأغاني للقائمة أولاً!");
     return;
   }
 
@@ -175,55 +161,38 @@ async function downloadZip() {
   const progressBar = document.getElementById('progressBar');
 
   progressContainer.style.display = 'block';
-  progressBar.style.width = '5%';
+  progressBar.style.width = '10%';
 
-  const BATCH_SIZE = 5; // معالجة 5 ملفات فقط في كل دفعة لتفادي استهلاك الذاكرة
-  let processedCount = 0;
+  let processed = 0;
 
-  for (let i = 0; i < playlist.length; i += BATCH_SIZE) {
-    const batch = playlist.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < playlist.length; i++) {
+    const song = playlist[i];
 
-    const batchPromises = batch.map(async (song) => {
-      if (song.type === 'local') {
-        folder.file(song.filename, song.data);
-      } else {
-        try {
-          const data = await fetchWithTimeout(song.audioUrl, 3000);
-          folder.file(song.filename, data);
-        } catch (e1) {
-          try {
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(song.audioUrl)}`;
-            const data = await fetchWithTimeout(proxyUrl, 3000);
-            folder.file(song.filename, data);
-          } catch (e2) {
-            console.warn(`تجاوز الملف لتأخر الاستجابة: ${song.filename}`);
-          }
+    if (song.type === 'local') {
+      folder.file(song.filename, song.data);
+    } else {
+      try {
+        const response = await fetch(song.audioUrl);
+        if (response.ok) {
+          const blob = await response.blob();
+          folder.file(song.filename, blob);
         }
+      } catch (err) {
+        console.error(`خطأ في تنزيل: ${song.filename}`, err);
       }
-      processedCount++;
-    });
+    }
 
-    await Promise.all(batchPromises);
-
-    // تحديث الواجهة للسماح للمتصفح بالتقاط الأنفاس وتنظيف الذاكرة
-    progressBar.style.width = `${Math.floor((processedCount / playlist.length) * 70)}%`;
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    processed++;
+    progressBar.style.width = `${Math.floor((processed / playlist.length) * 80)}%`;
   }
 
-  progressBar.style.width = '75%';
-
-  // الضغط النهائي وتنزيل الملف
-  zip.generateAsync({ type: "blob", compression: "STORE" }, (metadata) => {
-    progressBar.style.width = `${75 + Math.floor(metadata.percent * 0.25)}%`;
-  }).then((content) => {
+  // إنشاء الملف المضغوط وتنزيله فوراً على الهاتف
+  zip.generateAsync({ type: "blob", compression: "STORE" }).then((content) => {
     saveAs(content, "music_playlist.zip");
-    setTimeout(() => {
-      progressContainer.style.display = 'none';
-      progressBar.style.width = '0%';
-    }, 1000);
+    progressContainer.style.display = 'none';
+    progressBar.style.width = '0%';
   }).catch((err) => {
-    alert("حدث خطأ أثناء إنشاء ملف ZIP.");
-    console.error(err);
+    alert("حدث خطأ أثناء تجميع ملف ZIP");
     progressContainer.style.display = 'none';
   });
 }
