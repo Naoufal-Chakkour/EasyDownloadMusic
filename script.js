@@ -1,3 +1,4 @@
+const BACKEND_URL = 'https://music-backend--laroussichakkou.replit.app';
 const playlist = [];
 const audioPlayer = document.getElementById('audioPlayer');
 const nowPlayingTitle = document.getElementById('nowPlayingTitle');
