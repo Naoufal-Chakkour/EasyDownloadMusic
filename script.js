@@ -146,7 +146,7 @@ function removeFromPlaylist(index) {
   updatePlaylistUI();
 }
 
-// 7. دالة تجلب الملف كـ ArrayBuffer مع مهلة زمنية صارمة 3 ثوانٍ
+// 7. دالة جلب الملف مع مهلة زمنية 3 ثوانٍ
 async function fetchWithTimeout(url, timeoutMs = 3000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -162,7 +162,7 @@ async function fetchWithTimeout(url, timeoutMs = 3000) {
   }
 }
 
-// 8. ضغط الملفات بدون تجميد (معالجة سريعة ومتوازية)
+// 8. ضغط الأعداد الكبيرة (100+ ملف) باستخدام المعالجة المتتابعة على دفعات (Batches)
 async function downloadZip() {
   if (playlist.length === 0) {
     alert("قم بإضافة بعض الأغاني إلى القائمة أولاً!");
@@ -175,41 +175,46 @@ async function downloadZip() {
   const progressBar = document.getElementById('progressBar');
 
   progressContainer.style.display = 'block';
-  progressBar.style.width = '10%';
+  progressBar.style.width = '5%';
 
-  let count = 0;
+  const BATCH_SIZE = 5; // معالجة 5 ملفات فقط في كل دفعة لتفادي استهلاك الذاكرة
+  let processedCount = 0;
 
-  // معالجة جميع عناصر القائمة بالتوازي لسرعة فائقة
-  const promises = playlist.map(async (song) => {
-    if (song.type === 'local') {
-      folder.file(song.filename, song.data);
-    } else {
-      // تجربة جلب الملف عبر أكثر من مصدر لضمان عدم التعليق
-      try {
-        const data = await fetchWithTimeout(song.audioUrl, 4000);
-        folder.file(song.filename, data);
-      } catch (e1) {
+  for (let i = 0; i < playlist.length; i += BATCH_SIZE) {
+    const batch = playlist.slice(i, i + BATCH_SIZE);
+
+    const batchPromises = batch.map(async (song) => {
+      if (song.type === 'local') {
+        folder.file(song.filename, song.data);
+      } else {
         try {
-          // محاولة باستخدام بروكسي طوارئ إذا فشل المباشر
-          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(song.audioUrl)}`;
-          const data = await fetchWithTimeout(proxyUrl, 4000);
+          const data = await fetchWithTimeout(song.audioUrl, 3000);
           folder.file(song.filename, data);
-        } catch (e2) {
-          console.warn(`تم تخطي الملف لتعذر التحميل: ${song.filename}`);
+        } catch (e1) {
+          try {
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(song.audioUrl)}`;
+            const data = await fetchWithTimeout(proxyUrl, 3000);
+            folder.file(song.filename, data);
+          } catch (e2) {
+            console.warn(`تجاوز الملف لتأخر الاستجابة: ${song.filename}`);
+          }
         }
       }
-    }
-    count++;
-    progressBar.style.width = `${Math.floor((count / playlist.length) * 60)}%`;
-  });
+      processedCount++;
+    });
 
-  await Promise.all(promises);
+    await Promise.all(batchPromises);
 
-  progressBar.style.width = '80%';
+    // تحديث الواجهة للسماح للمتصفح بالتقاط الأنفاس وتنظيف الذاكرة
+    progressBar.style.width = `${Math.floor((processedCount / playlist.length) * 70)}%`;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
 
-  // إعداد ملف الـ ZIP وتنزيله
+  progressBar.style.width = '75%';
+
+  // الضغط النهائي وتنزيل الملف
   zip.generateAsync({ type: "blob", compression: "STORE" }, (metadata) => {
-    progressBar.style.width = `${80 + Math.floor(metadata.percent * 0.2)}%`;
+    progressBar.style.width = `${75 + Math.floor(metadata.percent * 0.25)}%`;
   }).then((content) => {
     saveAs(content, "music_playlist.zip");
     setTimeout(() => {
@@ -217,7 +222,7 @@ async function downloadZip() {
       progressBar.style.width = '0%';
     }, 1000);
   }).catch((err) => {
-    alert("حدث خطأ أثناء تجميع ملف ZIP.");
+    alert("حدث خطأ أثناء إنشاء ملف ZIP.");
     console.error(err);
     progressContainer.style.display = 'none';
   });
