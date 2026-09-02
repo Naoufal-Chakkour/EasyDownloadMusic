@@ -7,12 +7,12 @@ const playlistUI = document.getElementById('playlist');
 const playlistEmptyState = document.getElementById('playlistEmptyState');
 const playlistCount = document.getElementById('playlistCount');
 
-// 1. رفع الملفات المحلية من الهاتف
+// 1. رفع ملفات محلياً من الجهاز
 function handleLocalFiles(event) {
   const files = event.target.files;
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
-    const songObj = {
+    playlist.push({
       id: Date.now() + Math.random(),
       title: file.name.replace(/\.[^/.]+$/, ""),
       artist: "ملف محلي",
@@ -21,13 +21,12 @@ function handleLocalFiles(event) {
       data: file,
       audioUrl: URL.createObjectURL(file),
       coverUrl: 'https://cdn-icons-png.flaticon.com/512/461/461238.png'
-    };
-    playlist.push(songObj);
+    });
   }
   updatePlaylistUI();
 }
 
-// 2. البحث المباشر السريع والخفيف بدون بروكسي
+// 2. البحث عن الأغاني مباشرة باستخدام محرك مجاني
 async function searchMusic(event) {
   event.preventDefault();
   const query = document.getElementById('searchInput').value.trim();
@@ -35,113 +34,79 @@ async function searchMusic(event) {
 
   searchResults.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...</div>';
 
-  // قائمة بخوادم عامة وريعية سريعة تعمل مباشرة على شبكات الهاتف
-  const instances = [
-    'https://invidious.nerdvpn.de',
-    'https://invidious.flokinet.to',
-    'https://inv.riverside.rocks'
-  ];
+  try {
+    // استخدام API مفتوح للبحث المباشر
+    const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&limit=10`);
+    const data = await response.json();
 
-  let success = false;
-
-  for (let baseUrl of instances) {
-    try {
-      const response = await fetch(`${baseUrl}/api/v1/search?q=${encodeURIComponent(query)}&type=video`, {
-        signal: AbortSignal.timeout(4000) // قطع الاتصال بعد 4 ثواني إذا كان الخادم بطيئاً
-      });
-
-      if (!response.ok) continue;
-
-      const data = await response.json();
-
-      if (!data || data.length === 0) {
-        searchResults.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج.</div>';
-        return;
-      }
-
-      searchResults.innerHTML = '';
-      data.slice(0, 10).forEach(video => {
-        const title = video.title || 'بدون عنوان';
-        const artist = video.author || 'فنان';
-        const cover = video.videoThumbnails ? video.videoThumbnails[0].url : 'https://cdn-icons-png.flaticon.com/512/461/461238.png';
-        const videoId = video.videoId;
-
-        const li = document.createElement('li');
-        li.className = 'song-item';
-
-        li.innerHTML = `
-          <div class="song-meta">
-            <img src="${cover}" alt="Cover">
-            <div class="song-details">
-              <span class="song-title-text">${title}</span>
-              <span class="song-artist-text">${artist}</span>
-            </div>
-          </div>
-          <div class="song-actions">
-            <button class="action-btn" onclick="fetchAndPlay('${videoId}', '${baseUrl}', '${escapeQuotes(title)}', '${cover}')" title="استماع">
-              <i class="fa-solid fa-play"></i>
-            </button>
-            <button class="action-btn" style="color: var(--success);" onclick="addOnlineToPlaylist('${videoId}', '${baseUrl}', '${escapeQuotes(title)}', '${escapeQuotes(artist)}', '${cover}')" title="إضافة">
-              <i class="fa-solid fa-plus"></i>
-            </button>
-          </div>
-        `;
-        searchResults.appendChild(li);
-      });
-
-      success = true;
-      break; // الخروج عند نجاح أول خادم
-    } catch (e) {
-      console.warn(`فشل الاتصال بالخادم: ${baseUrl}`);
+    if (!data.results || data.results.length === 0) {
+      searchResults.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج.</div>';
+      return;
     }
-  }
 
-  if (!success) {
-    searchResults.innerHTML = '<div class="empty-state">تأكد من فتح الصفحة في المتصفح المباشر وليس داخل تطبيق محدد. أعد المحاولة.</div>';
+    searchResults.innerHTML = '';
+    data.results.forEach(track => {
+      const li = document.createElement('li');
+      li.className = 'song-item';
+
+      // استخدام غلاف بدقة أعلى
+      const artwork = track.artworkUrl100.replace('100x100bb', '300x300bb');
+      const audioUrl = track.previewUrl;
+
+      li.innerHTML = `
+        <div class="song-meta">
+          <img src="${artwork}" alt="Cover">
+          <div class="song-details">
+            <span class="song-title-text">${track.trackName}</span>
+            <span class="song-artist-text">${track.artistName}</span>
+          </div>
+        </div>
+        <div class="song-actions">
+          <button class="action-btn" onclick="playPreview('${audioUrl}', '${escapeQuotes(track.trackName)} - ${escapeQuotes(track.artistName)}', '${artwork}')" title="تشغيل">
+            <i class="fa-solid fa-play"></i>
+          </button>
+          <button class="action-btn" style="color: var(--success);" onclick="addOnlineToPlaylist('${audioUrl}', '${escapeQuotes(track.trackName)}', '${escapeQuotes(track.artistName)}', '${artwork}')" title="إضافة للقائمة">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
+      `;
+      searchResults.appendChild(li);
+    });
+
+  } catch (error) {
+    console.error(error);
+    searchResults.innerHTML = '<div class="empty-state">حدث خطأ أثناء البحث، يرجى المحاولة لاحقاً.</div>';
   }
 }
 
 function escapeQuotes(str) {
-  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  return str ? str.replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
 }
 
-// 3. جلب وتجميع روابط الصوت للتشغيل
-async function fetchAndPlay(videoId, baseUrl, title, cover) {
-  try {
-    const res = await fetch(`${baseUrl}/api/v1/videos/${videoId}`);
-    const data = await res.json();
-    const audioFormats = data.adaptiveFormats.filter(f => f.type.includes('audio'));
-    
-    if (audioFormats.length > 0) {
-      audioPlayer.src = audioFormats[0].url;
-      nowPlayingTitle.textContent = title;
-      nowPlayingCover.src = cover;
-      nowPlayingCover.style.display = 'block';
-      audioPlayer.play();
-    }
-  } catch (e) {
-    alert("تعذر تشغيل هذا المقطع حالياً.");
-  }
+// 3. تشغيل الأغنية
+function playPreview(url, title, cover) {
+  audioPlayer.src = url;
+  nowPlayingTitle.textContent = title;
+  nowPlayingCover.src = cover;
+  nowPlayingCover.style.display = 'block';
+  audioPlayer.play();
 }
 
-// 4. إضافة أغنية لقائمة التجميع
-function addOnlineToPlaylist(videoId, baseUrl, title, artist, cover) {
-  const songObj = {
+// 4. إضافة الأغنية للقائمة
+function addOnlineToPlaylist(url, title, artist, coverUrl) {
+  playlist.push({
     id: Date.now() + Math.random(),
     title: title,
     artist: artist,
     filename: `${artist} - ${title}.mp3`,
     type: 'online',
-    videoId: videoId,
-    baseUrl: baseUrl,
-    coverUrl: cover
-  };
-
-  playlist.push(songObj);
+    audioUrl: url,
+    coverUrl: coverUrl
+  });
   updatePlaylistUI();
 }
 
-// 5. تحديث واجهة القائمة
+// 5. تحديث القائمة في الواجهة
 function updatePlaylistUI() {
   playlistUI.innerHTML = '';
   playlistCount.textContent = playlist.length;
@@ -173,16 +138,15 @@ function updatePlaylistUI() {
   });
 }
 
-// 6. حذف عنصر
 function removeFromPlaylist(index) {
   playlist.splice(index, 1);
   updatePlaylistUI();
 }
 
-// 7. ضغط وتنزيل الأغاني داخل ZIP بالهاتف
+// 6. ضغط الأغاني وتنزيلها في ملف ZIP
 async function downloadZip() {
   if (playlist.length === 0) {
-    alert("أضف بعض الأغاني أولاً!");
+    alert("أضف بعض الأغاني للقائمة أولاً!");
     return;
   }
 
@@ -203,30 +167,24 @@ async function downloadZip() {
       folder.file(song.filename, song.data);
     } else {
       try {
-        const res = await fetch(`${song.baseUrl}/api/v1/videos/${song.videoId}`);
-        const data = await res.json();
-        const audioFormats = data.adaptiveFormats.filter(f => f.type.includes('audio'));
-
-        if (audioFormats.length > 0) {
-          const audioRes = await fetch(audioFormats[0].url);
-          const blob = await audioRes.blob();
-          folder.file(song.filename, blob);
-        }
+        const response = await fetch(song.audioUrl);
+        const blob = await response.blob();
+        folder.file(song.filename, blob);
       } catch (err) {
-        console.error(`خطأ في تنزيل: ${song.filename}`, err);
+        console.error(`خطأ في تحميل: ${song.filename}`, err);
       }
     }
 
     processed++;
-    progressBar.style.width = `${Math.floor((processed / playlist.length) * 80)}%`;
+    progressBar.style.width = `${Math.floor((processed / playlist.length) * 85)}%`;
   }
 
-  zip.generateAsync({ type: "blob", compression: "STORE" }).then((content) => {
+  zip.generateAsync({ type: "blob" }).then((content) => {
     saveAs(content, "music_playlist.zip");
     progressContainer.style.display = 'none';
     progressBar.style.width = '0%';
   }).catch((err) => {
-    alert("حدث خطأ أثناء الضغط");
+    alert("حدث خطأ أثناء تنزيل الملف");
     progressContainer.style.display = 'none';
   });
 }
