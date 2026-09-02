@@ -7,7 +7,7 @@ const playlistUI = document.getElementById('playlist');
 const playlistEmptyState = document.getElementById('playlistEmptyState');
 const playlistCount = document.getElementById('playlistCount');
 
-// 1. رفع ملفات محلية من الهاتف
+// 1. رفع ملفات محلياً من الهاتف
 function handleLocalFiles(event) {
   const files = event.target.files;
   for (let i = 0; i < files.length; i++) {
@@ -27,35 +27,27 @@ function handleLocalFiles(event) {
   updatePlaylistUI();
 }
 
-// 2. البحث عن أغاني كاملة (MP3 كاملة 100% عبر Jamendo API)
-// 2. البحث عن أغاني كاملة عبر Jamendo API المحدث والمضمون
+// 2. دالة البحث المباشرة والمتوافقة مع الهاتف
 async function searchMusic(event) {
   event.preventDefault();
   const query = document.getElementById('searchInput').value.trim();
   if (!query) return;
 
-  searchResults.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> جاري البحث عن أغاني كاملة...</div>';
+  searchResults.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...</div>';
 
-  // مفتاح الاختبار الرسمي المضمون لخدمة Jamendo
-  const clientId = '709fa152';
-  const targetUrl = `https://api.jamendo.com/v3.0/tracks/?client_id=${clientId}&format=json&limit=15&namesearch=${encodeURIComponent(query)}`;
+  // رابط مصدر الأغاني الكاملة المباشرة
+  const targetApi = `https://api.jamendo.com/v3.0/tracks/?client_id=56631b3d&format=json&limit=15&fuzzytags=${encodeURIComponent(query)}&namesearch=${encodeURIComponent(query)}`;
+  
+  // استخدام وسيط متوافق مع متصفحات الهاتف لتفادي الحظر
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetApi)}`;
 
   try {
-    let data;
-    try {
-      // محاولة الطلب المباشر أولاً
-      const response = await fetch(targetUrl);
-      data = await response.json();
-    } catch (directErr) {
-      // استخدام بروكسي تلقائي في حال وجود مشكلة حظر CORS في المتصفح
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-      const proxyResponse = await fetch(proxyUrl);
-      const proxyData = await proxyResponse.json();
-      data = JSON.parse(proxyData.contents);
-    }
+    const response = await fetch(proxyUrl);
+    const result = await response.json();
+    const data = JSON.parse(result.contents);
 
     if (!data.results || data.results.length === 0) {
-      searchResults.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج. جرب كتابة اسم الفنان بالإنجليزي (مثل: Rock, Jazz, Alan)</div>';
+      searchResults.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج. جرب البحث بلغة أو كلمة أخرى (مثال: Pop, Relax, Acoustic, Piano).</div>';
       return;
     }
 
@@ -64,19 +56,24 @@ async function searchMusic(event) {
       const li = document.createElement('li');
       li.className = 'song-item';
 
+      const trackTitle = track.name || 'بدون عنوان';
+      const artistName = track.artist_name || 'فنان مستقل';
+      const cover = track.image || 'https://cdn-icons-png.flaticon.com/512/461/461238.png';
+      const audio = track.audio;
+
       li.innerHTML = `
         <div class="song-meta">
-          <img src="${track.image}" alt="Cover">
+          <img src="${cover}" alt="Cover">
           <div class="song-details">
-            <span class="song-title-text">${track.name}</span>
-            <span class="song-artist-text">${track.artist_name}</span>
+            <span class="song-title-text">${trackTitle}</span>
+            <span class="song-artist-text">${artistName}</span>
           </div>
         </div>
         <div class="song-actions">
-          <button class="action-btn" onclick="playPreview('${track.audio}', '${escapeQuotes(track.name)} - ${escapeQuotes(track.artist_name)}', '${track.image}')" title="استماع">
+          <button class="action-btn" onclick="playPreview('${audio}', '${escapeQuotes(trackTitle)} - ${escapeQuotes(artistName)}', '${cover}')" title="استماع">
             <i class="fa-solid fa-play"></i>
           </button>
-          <button class="action-btn" style="color: var(--success);" onclick="addOnlineToPlaylist('${escapeQuotes(track.name)}', '${escapeQuotes(track.artist_name)}', '${track.audio}', '${track.image}')" title="إضافة">
+          <button class="action-btn" style="color: var(--success);" onclick="addOnlineToPlaylist('${escapeQuotes(trackTitle)}', '${escapeQuotes(artistName)}', '${audio}', '${cover}')" title="إضافة">
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
@@ -85,8 +82,8 @@ async function searchMusic(event) {
     });
 
   } catch (error) {
-    console.error("Search Error:", error);
-    searchResults.innerHTML = '<div class="empty-state">حدث خطأ أثناء جلب النتائج. حاول مجدداً.</div>';
+    console.error(error);
+    searchResults.innerHTML = '<div class="empty-state">تعذر الاتصال بالشبكة. تأكد من الاتصال بالإنترنت وأعد المحاولة.</div>';
   }
 }
 
@@ -103,7 +100,7 @@ function playPreview(url, title, cover) {
   audioPlayer.play();
 }
 
-// 4. إضافة أغنية للقائمة
+// 4. إضافة أغنية لقائمة التحميل
 function addOnlineToPlaylist(title, artist, audioUrl, coverUrl) {
   const songObj = {
     id: Date.now() + Math.random(),
@@ -119,7 +116,7 @@ function addOnlineToPlaylist(title, artist, audioUrl, coverUrl) {
   updatePlaylistUI();
 }
 
-// 5. تحديث قائمة التجميع
+// 5. تحديث الواجهة
 function updatePlaylistUI() {
   playlistUI.innerHTML = '';
   playlistCount.textContent = playlist.length;
@@ -154,16 +151,16 @@ function updatePlaylistUI() {
   });
 }
 
-// 6. حذف عنصر من القائمة
+// 6. حذف عنصر
 function removeFromPlaylist(index) {
   playlist.splice(index, 1);
   updatePlaylistUI();
 }
 
-// 7. تنزيل كل الأغاني كاملة مضغوطة في ملف ZIP على الهاتف
+// 7. التجميع والضغط في ZIP
 async function downloadZip() {
   if (playlist.length === 0) {
-    alert("أضف بعض الأغاني للقائمة أولاً!");
+    alert("أضف بعض الأغاني أولاً!");
     return;
   }
 
@@ -198,13 +195,12 @@ async function downloadZip() {
     progressBar.style.width = `${Math.floor((processed / playlist.length) * 80)}%`;
   }
 
-  // إنشاء الملف المضغوط وتنزيله فوراً على الهاتف
   zip.generateAsync({ type: "blob", compression: "STORE" }).then((content) => {
     saveAs(content, "music_playlist.zip");
     progressContainer.style.display = 'none';
     progressBar.style.width = '0%';
   }).catch((err) => {
-    alert("حدث خطأ أثناء تجميع ملف ZIP");
+    alert("حدث خطأ أثناء التجميع");
     progressContainer.style.display = 'none';
   });
 }
