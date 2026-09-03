@@ -28,55 +28,48 @@ function handleLocalFiles(event) {
 }
 
 // 2. البحث عن الأغاني مباشرة باستخدام محرك مجاني
+
 async function searchMusic(event) {
   event.preventDefault();
   const query = document.getElementById('searchInput').value.trim();
   if (!query) return;
 
-  searchResults.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...</div>';
+  searchResults.innerHTML = '<div class="empty-state">جاري البحث عن مقاطع كاملة...</div>';
 
   try {
-    // استخدام API مفتوح للبحث المباشر
-    const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&limit=10`);
-    const data = await response.json();
+    const response = await fetch(`${BACKEND_URL}/api/search?q=${encodeURIComponent(query)}`);
+    const tracks = await response.json();
 
-    if (!data.results || data.results.length === 0) {
+    if (!tracks || tracks.length === 0) {
       searchResults.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج.</div>';
       return;
     }
 
     searchResults.innerHTML = '';
-    data.results.forEach(track => {
+    tracks.forEach(track => {
       const li = document.createElement('li');
       li.className = 'song-item';
-
-      // استخدام غلاف بدقة أعلى
-      const artwork = track.artworkUrl100.replace('100x100bb', '300x300bb');
-      const audioUrl = track.previewUrl;
-
       li.innerHTML = `
         <div class="song-meta">
-          <img src="${artwork}" alt="Cover">
+          <img src="${track.coverUrl}" alt="Cover">
           <div class="song-details">
-            <span class="song-title-text">${track.trackName}</span>
-            <span class="song-artist-text">${track.artistName}</span>
+            <span class="song-title-text">${track.title}</span>
+            <span class="song-artist-text">${track.artist}</span>
           </div>
         </div>
         <div class="song-actions">
-          <button class="action-btn" onclick="playPreview('${audioUrl}', '${escapeQuotes(track.trackName)} - ${escapeQuotes(track.artistName)}', '${artwork}')" title="تشغيل">
+          <button class="action-btn" onclick="playPreview('${track.audioUrl}', '${escapeQuotes(track.title)}', '${track.coverUrl}')">
             <i class="fa-solid fa-play"></i>
           </button>
-          <button class="action-btn" style="color: var(--success);" onclick="addOnlineToPlaylist('${audioUrl}', '${escapeQuotes(track.trackName)}', '${escapeQuotes(track.artistName)}', '${artwork}')" title="إضافة للقائمة">
+          <button class="action-btn" onclick="addOnlineToPlaylist('${track.audioUrl}', '${escapeQuotes(track.title)}', '${escapeQuotes(track.artist)}', '${track.coverUrl}')">
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
       `;
       searchResults.appendChild(li);
     });
-
   } catch (error) {
-    console.error(error);
-    searchResults.innerHTML = '<div class="empty-state">حدث خطأ أثناء البحث، يرجى المحاولة لاحقاً.</div>';
+    searchResults.innerHTML = '<div class="empty-state">حدث خطأ في الاتصال بالخادم.</div>';
   }
 }
 
