@@ -1,7 +1,7 @@
 // نستخدم الـ Backend القانوني الخاص بنا
 // Jamendo, Audius, ccMixter, FMA, Internet Archive, Musopen, Openverse, Wikimedia, SoundCloud
 
-const API_BASE = "https://musicbackend-ugo4qcct.b4a.run/api";
+const API_BASE = "https://musicbackend-9qjz558y.b4a.run/api";
 
 const playlist = [];
 
