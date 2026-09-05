@@ -79,7 +79,6 @@ header p {
   color: var(--accent-cyan);
 }
 
-/* Player Card */
 .player-card {
   display: flex;
   flex-direction: column;
@@ -117,7 +116,6 @@ audio {
   outline: none;
 }
 
-/* Grid Layout */
 .grid-container {
   display: grid;
   grid-template-columns: 1fr;
@@ -130,7 +128,6 @@ audio {
   }
 }
 
-/* Drop zone */
 .drop-zone {
   border: 2px dashed var(--accent-color);
   border-radius: 12px;
@@ -157,7 +154,6 @@ audio {
   color: var(--text-muted);
 }
 
-/* Search Box */
 .search-box {
   display: flex;
   gap: 10px;
@@ -211,7 +207,6 @@ input[type="text"]:focus {
   opacity: 0.9;
 }
 
-/* Lists */
 .song-list {
   list-style: none;
   display: flex;
@@ -293,7 +288,6 @@ input[type="text"]:focus {
   background: var(--danger);
 }
 
-/* Progress bar */
 .progress-bar-container {
   width: 100%;
   background: var(--bg-primary);
