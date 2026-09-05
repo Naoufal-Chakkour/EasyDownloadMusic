@@ -4,17 +4,36 @@
 const API_BASE = "https://musicbackend-b5z77tho.b4a.run/api/";
 
 const playlist = [];
-const audioPlayer = document.getElementById('audioPlayer');
-const nowPlayingTitle = document.getElementById('nowPlayingTitle');
-const nowPlayingCover = document.getElementById('nowPlayingCover');
-const searchResults = document.getElementById('searchResults');
-const playlistUI = document.getElementById('playlist');
-const playlistEmptyState = document.getElementById('playlistEmptyState');
-const playlistCount = document.getElementById('playlistCount');
 
-const DEFAULT_COVER = 'https://cdn-icons-png.flaticon.com/512/461/461238.png';
+const audioPlayer =
+  document.getElementById('audioPlayer');
 
-// 1. رفع ملفات محلياً من الجهاز
+const nowPlayingTitle =
+  document.getElementById('nowPlayingTitle');
+
+const nowPlayingCover =
+  document.getElementById('nowPlayingCover');
+
+const searchResults =
+  document.getElementById('searchResults');
+
+const playlistUI =
+  document.getElementById('playlist');
+
+const playlistEmptyState =
+  document.getElementById('playlistEmptyState');
+
+const playlistCount =
+  document.getElementById('playlistCount');
+
+const DEFAULT_COVER =
+  'https://cdn-icons-png.flaticon.com/512/461/461238.png';
+
+
+// =====================================================
+// LOCAL FILES
+// =====================================================
+
 function handleLocalFiles(event) {
   const files = event.target.files;
 
@@ -22,44 +41,77 @@ function handleLocalFiles(event) {
     const file = files[i];
 
     playlist.push({
-      id: Date.now() + Math.random(),
-      title: file.name.replace(/\.[^/.]+$/, ""),
-      artist: "ملف محلي",
-      filename: file.name,
-      type: 'local',
-      data: file,
-      audioUrl: URL.createObjectURL(file),
-      coverUrl: DEFAULT_COVER
+      id:
+        Date.now() +
+        Math.random(),
+
+      title:
+        file.name.replace(
+          /\.[^/.]+$/,
+          ""
+        ),
+
+      artist:
+        "ملف محلي",
+
+      filename:
+        file.name,
+
+      type:
+        'local',
+
+      data:
+        file,
+
+      audioUrl:
+        URL.createObjectURL(file),
+
+      coverUrl:
+        DEFAULT_COVER
     });
   }
 
   updatePlaylistUI();
 }
 
-// 2. البحث عبر مصادرنا القانونية المتعددة
+
+// =====================================================
+// SEARCH
+// =====================================================
+
 async function searchMusic(event) {
   event.preventDefault();
 
   const query =
-    document.getElementById('searchInput').value.trim();
+    document
+      .getElementById('searchInput')
+      .value
+      .trim();
 
-  if (!query) return;
+  if (!query) {
+    return;
+  }
 
   searchResults.innerHTML =
     '<div class="empty-state">جاري البحث في كل المصادر...</div>';
 
   try {
-    const response = await fetch(
-      `${API_BASE}/search?artist=${encodeURIComponent(query)}`
-    );
+    const response =
+      await fetch(
+        `${API_BASE}/search?artist=${encodeURIComponent(query)}`
+      );
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(
+        `HTTP ${response.status}`
+      );
     }
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
-    const tracks = data.results || [];
+    const tracks =
+      data.results || [];
 
     if (tracks.length === 0) {
       searchResults.innerHTML =
@@ -68,102 +120,157 @@ async function searchMusic(event) {
       return;
     }
 
-    searchResults.innerHTML = '';
+    searchResults.innerHTML =
+      '';
 
-    tracks.forEach((track, index) => {
-      const li = document.createElement('li');
+    window.__lastSearchResults =
+      tracks;
 
-      li.className = 'song-item';
+    tracks.forEach(
+      (track, index) => {
+        const li =
+          document.createElement('li');
 
-      li.innerHTML = `
-        <div class="song-meta">
-          <img src="${DEFAULT_COVER}" alt="Cover">
+        li.className =
+          'song-item';
 
-          <div class="song-details">
-            <span class="song-title-text">
-              ${escapeHtml(track.title || 'بدون عنوان')}
-            </span>
+        li.innerHTML = `
+          <div class="song-meta">
 
-            <span class="song-artist-text">
-              ${escapeHtml(track.artist || 'غير معروف')}
-              ·
-              ${escapeHtml(track.sourceProvider || '')}
-            </span>
+            <img
+              src="${DEFAULT_COVER}"
+              alt="Cover">
+
+            <div class="song-details">
+
+              <span class="song-title-text">
+                ${escapeHtml(
+                  track.title ||
+                  'بدون عنوان'
+                )}
+              </span>
+
+              <span class="song-artist-text">
+                ${escapeHtml(
+                  track.artist ||
+                  'غير معروف'
+                )}
+                ·
+                ${escapeHtml(
+                  track.sourceProvider ||
+                  ''
+                )}
+              </span>
+
+            </div>
+
           </div>
-        </div>
 
-        <div class="song-actions">
+          <div class="song-actions">
 
-          <button
-            class="action-btn"
-            onclick="playPreviewByIndex(${index})"
-            title="استماع">
-            <i class="fa-solid fa-play"></i>
-          </button>
+            <button
+              class="action-btn"
+              onclick="playPreviewByIndex(${index})"
+              title="استماع">
 
-          <button
-            class="action-btn"
-            onclick="addOnlineToPlaylistByIndex(${index})"
-            title="إضافة للقائمة">
-            <i class="fa-solid fa-plus"></i>
-          </button>
+              <i class="fa-solid fa-play"></i>
 
-        </div>
-      `;
+            </button>
 
-      searchResults.appendChild(li);
-    });
+            <button
+              class="action-btn"
+              onclick="addOnlineToPlaylistByIndex(${index})"
+              title="إضافة للقائمة">
 
-    // الاحتفاظ بنتائج البحث الحالية
-    window.__lastSearchResults = tracks;
+              <i class="fa-solid fa-plus"></i>
+
+            </button>
+
+          </div>
+        `;
+
+        searchResults.appendChild(li);
+      }
+    );
 
   } catch (error) {
-    console.error('[Frontend Search Error]', error);
+
+    console.error(
+      '[Frontend Search Error]',
+      error
+    );
 
     searchResults.innerHTML =
       '<div class="empty-state">حدث خطأ في الاتصال بالخادم. تأكد أن الـ Backend يعمل.</div>';
   }
 }
 
-// حماية النصوص من HTML
-function escapeHtml(str) {
-  const div = document.createElement('div');
 
-  div.textContent = str;
+// =====================================================
+// HTML SECURITY
+// =====================================================
+
+function escapeHtml(str) {
+  const div =
+    document.createElement('div');
+
+  div.textContent =
+    str;
 
   return div.innerHTML;
 }
 
-// 3. تشغيل الأغنية
-function playPreview(url, title, cover) {
+
+// =====================================================
+// AUDIO PLAYER
+// =====================================================
+
+function playPreview(
+  url,
+  title,
+  cover
+) {
   if (!url) {
-    alert("هذه الأغنية لا تحتوي على رابط تشغيل مباشر.");
+    alert(
+      "هذه الأغنية لا تحتوي على رابط تشغيل مباشر."
+    );
+
     return;
   }
 
-  audioPlayer.src = url;
+  audioPlayer.src =
+    url;
 
-  nowPlayingTitle.textContent = title;
+  nowPlayingTitle.textContent =
+    title;
 
   nowPlayingCover.src =
-    cover || DEFAULT_COVER;
+    cover ||
+    DEFAULT_COVER;
 
   nowPlayingCover.style.display =
     'block';
 
-  audioPlayer.play().catch(error => {
-    console.warn(
-      '[Audio Playback]',
-      error
+  audioPlayer
+    .play()
+    .catch(
+      error => {
+        console.warn(
+          '[Audio Playback]',
+          error
+        );
+      }
     );
-  });
 }
+
 
 function playPreviewByIndex(index) {
   const track =
     window.__lastSearchResults?.[index];
 
-  if (!track) return;
+  if (!track) {
+    return;
+  }
 
   const playableUrl =
     track.streamUrl ||
@@ -176,12 +283,17 @@ function playPreviewByIndex(index) {
   );
 }
 
-// 4. إضافة الأغنية للقائمة
+
+// =====================================================
+// ADD ONLINE SONG TO PLAYLIST
+// =====================================================
+
 function addOnlineToPlaylist(
   url,
   title,
   artist,
-  coverUrl
+  coverUrl,
+  sourceProvider
 ) {
   if (!url) {
     alert(
@@ -208,8 +320,17 @@ function addOnlineToPlaylist(
     type:
       'online',
 
+    // يستخدمه مشغل الصوت
     audioUrl:
       url,
+
+    // مهم جدًا للـ Backend
+    downloadUrl:
+      url,
+
+    // مهم جدًا للتحقق من المصدر
+    sourceProvider:
+      sourceProvider || '',
 
     coverUrl:
       coverUrl ||
@@ -219,11 +340,18 @@ function addOnlineToPlaylist(
   updatePlaylistUI();
 }
 
+
+// =====================================================
+// ADD ONLINE SONG BY SEARCH INDEX
+// =====================================================
+
 function addOnlineToPlaylistByIndex(index) {
   const track =
     window.__lastSearchResults?.[index];
 
-  if (!track) return;
+  if (!track) {
+    return;
+  }
 
   if (!track.downloadUrl) {
     alert(
@@ -237,18 +365,25 @@ function addOnlineToPlaylistByIndex(index) {
     track.downloadUrl,
     track.title,
     track.artist,
-    DEFAULT_COVER
+    DEFAULT_COVER,
+    track.sourceProvider
   );
 }
 
-// 5. تحديث القائمة في الواجهة
+
+// =====================================================
+// PLAYLIST UI
+// =====================================================
+
 function updatePlaylistUI() {
-  playlistUI.innerHTML = '';
+  playlistUI.innerHTML =
+    '';
 
   playlistCount.textContent =
     playlist.length;
 
   if (playlist.length === 0) {
+
     playlistUI.appendChild(
       playlistEmptyState
     );
@@ -261,6 +396,7 @@ function updatePlaylistUI() {
 
   playlist.forEach(
     (song, index) => {
+
       const li =
         document.createElement('li');
 
@@ -277,14 +413,19 @@ function updatePlaylistUI() {
           <div class="song-details">
 
             <span class="song-title-text">
-              ${escapeHtml(song.title)}
+              ${escapeHtml(
+                song.title
+              )}
             </span>
 
             <span class="song-artist-text">
-              ${escapeHtml(song.artist)}
+              ${escapeHtml(
+                song.artist
+              )}
             </span>
 
           </div>
+
         </div>
 
         <div class="song-actions">
@@ -301,10 +442,17 @@ function updatePlaylistUI() {
         </div>
       `;
 
-      playlistUI.appendChild(li);
+      playlistUI.appendChild(
+        li
+      );
     }
   );
 }
+
+
+// =====================================================
+// REMOVE FROM PLAYLIST
+// =====================================================
 
 function removeFromPlaylist(index) {
   const song =
@@ -328,11 +476,15 @@ function removeFromPlaylist(index) {
   updatePlaylistUI();
 }
 
-// 6. تنزيل القائمة كملف ZIP
-// الملفات المحلية تُضغط في المتصفح مباشرة
-// الملفات الأونلاين تُطلب من الـ Backend
+
+// =====================================================
+// DOWNLOAD ZIP
+// =====================================================
+
 async function downloadZip() {
+
   if (playlist.length === 0) {
+
     alert(
       "أضف بعض الأغاني للقائمة أولاً!"
     );
@@ -356,11 +508,13 @@ async function downloadZip() {
   progressBar.style.width =
     '10%';
 
+
   const localSongs =
     playlist.filter(
       song =>
         song.type === 'local'
     );
+
 
   const onlineSongs =
     playlist.filter(
@@ -368,7 +522,9 @@ async function downloadZip() {
         song.type === 'online'
     );
 
+
   try {
+
     const zip =
       new JSZip();
 
@@ -377,23 +533,47 @@ async function downloadZip() {
         "My_Music_Playlist"
       );
 
-    // الملفات المحلية
+
+    // =================================================
+    // LOCAL SONGS
+    // =================================================
+
     localSongs.forEach(
       song => {
+
         folder.file(
           song.filename,
           song.data
         );
+
       }
     );
+
 
     progressBar.style.width =
       '30%';
 
-    // الملفات الأونلاين
+
+    // =================================================
+    // ONLINE SONGS
+    // =================================================
+
     if (
       onlineSongs.length > 0
     ) {
+
+      /*
+       * نرسل الـ tracks كما هي إلى الـBackend.
+       *
+       * كل online song يحتوي الآن على:
+       *
+       * downloadUrl
+       * sourceProvider
+       * title
+       * artist
+       *
+       */
+
       const response =
         await fetch(
           `${API_BASE}/download`,
@@ -414,7 +594,9 @@ async function downloadZip() {
           }
         );
 
+
       if (!response.ok) {
+
         const err =
           await response
             .json()
@@ -428,34 +610,41 @@ async function downloadZip() {
         );
       }
 
+
       progressBar.style.width =
         '70%';
 
-      // ZIP القادم من السيرفر
+
       const serverZipBlob =
         await response.blob();
+
 
       const serverZip =
         await JSZip.loadAsync(
           serverZipBlob
         );
 
+
       const fileEntries =
         Object.values(
           serverZip.files
         );
 
+
       for (
         const entry of fileEntries
       ) {
+
         if (entry.dir) {
           continue;
         }
+
 
         const content =
           await entry.async(
             'blob'
           );
+
 
         folder.file(
           entry.name,
@@ -464,8 +653,14 @@ async function downloadZip() {
       }
     }
 
+
     progressBar.style.width =
       '90%';
+
+
+    // =================================================
+    // CREATE FINAL ZIP
+    // =================================================
 
     const finalBlob =
       await zip.generateAsync({
@@ -473,15 +668,19 @@ async function downloadZip() {
           'blob'
       });
 
+
     saveAs(
       finalBlob,
       'music_playlist.zip'
     );
 
+
     progressBar.style.width =
       '100%';
 
+
   } catch (err) {
+
     console.error(
       '[Frontend Download Error]',
       err
@@ -491,14 +690,18 @@ async function downloadZip() {
       `حدث خطأ أثناء تنزيل الملف: ${err.message}`
     );
 
+
   } finally {
+
     setTimeout(
       () => {
+
         progressContainer.style.display =
           'none';
 
         progressBar.style.width =
           '0%';
+
       },
       500
     );
