@@ -1,4 +1,4 @@
-const BACKEND_URL = 'https://music-backend-4imz7bh8w-myself-395e.vercel.app';
+const BACKEND_URL = "https://musicbackend-x3q7ih1k.b4a.run";
 const playlist = [];
 const audioPlayer = document.getElementById('audioPlayer');
 const nowPlayingTitle = document.getElementById('nowPlayingTitle');
