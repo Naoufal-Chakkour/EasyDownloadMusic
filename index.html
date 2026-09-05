@@ -4,17 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Music Vault & Downloader</title>
-  
-  <!-- الخطوط والأيقونات -->
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <!-- ربط ملف التنسيقات الخارجية CSS -->
+
   <link rel="stylesheet" href="style.css">
 
-  <!-- مكتبات الضغط والتنزيل JSZip & FileSaver -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
@@ -23,10 +20,9 @@
   <div class="container">
     <header>
       <h1><i class="fa-solid fa-compact-disc"></i> Music Vault</h1>
-      <p>ابحث عن الأغاني عبر الإنترنت أو ارفع ملفاتك الخاصة، واجمعها في ملف ZIP واحد بضغطة زر</p>
+      <p>ابحث عن الأغاني عبر مصادر قانونية متعددة أو ارفع ملفاتك الخاصة، واجمعها في ملف ZIP واحد بضغطة زر</p>
     </header>
 
-    <!-- مشغل الصوتيات -->
     <div class="card player-card">
       <div class="now-playing-info">
         <img id="nowPlayingCover" src="" alt="Cover">
@@ -36,11 +32,9 @@
     </div>
 
     <div class="grid-container">
-      
-      <!-- القسم الأول: البحث والرفع المحلي -->
+
       <div class="card">
-        
-        <!-- رفع من الجهاز -->
+
         <div class="card-title">
           <i class="fa-solid fa-file-audio"></i>
           <span>رفع من جهازك</span>
@@ -51,14 +45,13 @@
           <input type="file" id="fileInput" accept="audio/*" multiple style="display: none;" onchange="handleLocalFiles(event)">
         </div>
 
-        <!-- البحث عبر الإنترنت -->
         <div class="card-title">
           <i class="fa-solid fa-magnifying-glass"></i>
           <span>البحث عن مغني أو أغنية</span>
         </div>
-        
+
         <form class="search-box" onsubmit="searchMusic(event)">
-          <input type="text" id="searchInput" placeholder="اكتب اسم المغني (مثال: Amr Diab, Adele)...">
+          <input type="text" id="searchInput" placeholder="اكتب اسم المغني أو الأغنية...">
           <button type="submit" class="btn btn-primary">
             <i class="fa-solid fa-search"></i>بحث
           </button>
@@ -69,7 +62,6 @@
         </ul>
       </div>
 
-      <!-- القسم الثاني: قائمة التجميع والتحميل -->
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
           <div class="card-title" style="margin-bottom:0;">
@@ -93,7 +85,6 @@
     </div>
   </div>
 
-  <!-- ربط ملف الجافاسكريبت الخارجي JS -->
   <script src="script.js"></script>
 </body>
 </html>
